@@ -4,10 +4,22 @@ import (
 	"fmt"
 	"net/http"
 	"time"
+	"html/template"
 )
 
 func handler(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintf(w, "Hello, World!", time.Now())
+	tmpl, err := template.ParseFiles("index.html")
+	if err != nil {
+		http.Error(w, "Template Parsing Error", http.StatusInternalServerError)
+	}
+	data := struct {
+		Title string 
+		Content string
+	}{
+		Title: "编程初学者调试助手",
+		Content: "Hello, World!" + time.Now().Format("2006-01-02 15:04:05"),
+	}
+	err = tmpl.Execute(w, data)
 }
 
 func main() {
