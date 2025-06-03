@@ -1,9 +1,12 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"html/template"
+	"io"
 	"net/http"
+	"os/exec"
 	"time"
 )
 
@@ -15,6 +18,31 @@ func handler(w http.ResponseWriter, r *http.Request) {
 
 	r.ParseForm()
 	userCode := r.FormValue("code")
+	feedback := ""
+
+	if userCode != "" {
+		cmd := exec.Command("python3", "glm.py")
+		var outBuf, errBuf bytes.Buffer
+		cmd.Stdout = &outBuf
+		cmd.Stderr = &errBuf
+
+		stdin, err := cmd.StdinPipe()
+		if err != nil {
+			feedback = "Error opening stdin: " + err.Error()
+		} else {
+			go func() {
+				defer stdin.Close()
+				io.WriteString(stdin, userCode)
+			}()
+
+			err = cmd.Run()
+			if err != nil {
+				feedback = "Execution error:\n" + err.Error() + "\n" + errBuf.String()
+			} else {
+				feedback = outBuf.String()
+			}
+		}
+	}
 
 	data := struct {
 		Title    string
@@ -23,7 +51,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	}{
 		Title:    "编程初学者调试助手",
 		Content:  time.Now().Format("2006-01-02 15:04:05"),
-		UserCode: userCode,
+		UserCode: userCode + "\n" + feedback,
 	}
 
 	err = tmpl.Execute(w, data)
