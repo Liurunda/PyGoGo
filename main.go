@@ -2,24 +2,34 @@ package main
 
 import (
 	"fmt"
+	"html/template"
 	"net/http"
 	"time"
-	"html/template"
 )
 
 func handler(w http.ResponseWriter, r *http.Request) {
-	tmpl, err := template.ParseFiles("index.html")
+	tmpl, err := template.ParseFiles("templates/index.html")
 	if err != nil {
 		http.Error(w, "Template Parsing Error", http.StatusInternalServerError)
 	}
+
+	r.ParseForm()
+	userCode := r.FormValue("code")
+
 	data := struct {
-		Title string 
-		Content string
+		Title    string
+		Content  string
+		UserCode string
 	}{
-		Title: "编程初学者调试助手",
-		Content: "Hello, World!" + time.Now().Format("2006-01-02 15:04:05"),
+		Title:    "编程初学者调试助手",
+		Content:  time.Now().Format("2006-01-02 15:04:05"),
+		UserCode: userCode,
 	}
+
 	err = tmpl.Execute(w, data)
+	if err != nil {
+		http.Error(w, "Template Rendering Error", http.StatusInternalServerError)
+	}
 }
 
 func main() {

@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>{{.Title}}</title> <!-- 动态标题占位符 -->
+</head>
+<body>
+    <h1>{{.Content}}</h1>
+    <p>
+        这里是一些调试建议:<br>
+        1. 分而治之<br>
+        2. 确保初始条件正确<br>
+        3. 记录调试的过程<br>
+    </p>
+
+    <h2>提交你的代码片段</h2>
+    <form method="POST" action="/">
+        <textarea name="code" rows="10" cols="50" placeholder="粘贴你的代码"></textarea><br>
+        <input type="submit" value="提交">
+    </form>
+
+    {{if .UserCode}}
+    <h3>你提交的代码：</h3>
+    <pre>{{.UserCode}}</pre>
+    {{end}}
+    
+</body>
+</html>
