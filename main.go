@@ -21,7 +21,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	feedback := ""
 
 	if userCode != "" {
-		cmd := exec.Command("python3", "glm.py")
+		cmd := exec.Command("python3", "qwen.py")
 		var outBuf, errBuf bytes.Buffer
 		cmd.Stdout = &outBuf
 		cmd.Stderr = &errBuf
