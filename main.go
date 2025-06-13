@@ -2,12 +2,16 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"html/template"
 	"io"
 	"net/http"
 	"os/exec"
 	"time"
+
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 func handler(w http.ResponseWriter, r *http.Request) {
@@ -42,6 +46,21 @@ func handler(w http.ResponseWriter, r *http.Request) {
 				feedback = outBuf.String()
 			}
 		}
+	}
+
+	//store code and feedback in mongodb:
+	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
+	defer cancel()
+	client, err := mongo.Connect(ctx, options.Client().ApplyURI("mongodb://localhost:27017"))
+	if err == nil {
+		defer client.Disconnect(ctx)
+		collection := client.Database("pygogo").Collection("submissions")
+		_, _ = collection.InsertOne(ctx, map[string]interface{}{
+			"code":     userCode,
+			"feedback": feedback,
+			"time":     time.Now(),
+			"ip":       r.RemoteAddr,
+		})
 	}
 
 	data := struct {
