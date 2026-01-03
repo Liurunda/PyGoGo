@@ -14,7 +14,7 @@ code = sys.stdin.read()
 completion = client.chat.completions.create(
     model="deepseek-v3",  
     messages=[    
-        {"role": "system", "content": "你是一名经验丰富的程序设计教师, 请调试给出的代码"},    
+        {"role": "system", "content": "如果给出一段代码，请调试其中的bug; 如果给出一段英文，请翻译成中文"},    
         {"role": "user", "content": code} 
     ],
     top_p=0.7,
