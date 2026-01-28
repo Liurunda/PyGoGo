@@ -17,12 +17,19 @@
         #quiz-container { display: none; }
         .quiz-text { font-size: 1.2rem; line-height: 1.8; background: #fff9f9; padding: 20px; border-left: 5px solid var(--accent); margin-bottom: 25px; white-space: pre-wrap; }
         .option-btn { display: block; width: 100%; padding: 12px 20px; margin: 10px 0; border: 2px solid #eee; border-radius: 8px; background: white; text-align: left; cursor: pointer; transition: 0.2s; font-size: 1rem; }
-        .option-btn:hover { border-color: var(--accent); background: #fff5f5; }
-        .option-btn.correct { background: #d4edda; border-color: #28a745; color: #155724; }
-        .option-btn.wrong { background: #f8d7da; border-color: #dc3545; color: #721c24; }
+        .option-btn:hover:not(:disabled) { border-color: var(--accent); background: #fff5f5; }
+        .option-btn.correct { background: #d4edda !important; border-color: #28a745 !important; color: #155724; }
+        .option-btn.wrong { background: #f8d7da !important; border-color: #dc3545 !important; color: #721c24; }
+        .option-btn:disabled { cursor: default; }
 
         #result-box { margin-top: 20px; padding: 20px; border-radius: 8px; display: none; }
         .explanation { color: #666; font-size: 0.95rem; margin-top: 10px; border-top: 1px solid #eee; padding-top: 10px; }
+        
+        .next-btn { 
+            margin-top: 15px; padding: 10px 25px; background: var(--primary); color: white; 
+            border: none; border-radius: 5px; cursor: pointer; font-size: 1rem;
+        }
+        .next-btn:hover { opacity: 0.9; }
     </style>
 </head>
 <body>
@@ -31,7 +38,7 @@
     <!-- 加载状态 -->
     <div id="loader">
         <div class="spinner"></div>
-        <p>题目生成中，请稍候...</p>
+        <p id="loader-text">题目加载中...</p>
     </div>
 
     <!-- 题目内容 -->
@@ -43,7 +50,8 @@
         <div id="result-box">
             <h3 id="result-status"></h3>
             <div class="explanation" id="explanation"></div>
-            <button onclick="location.reload()" style="margin-top: 15px; cursor: pointer;">下一题</button>
+            <!-- 修改了这里的按钮行为 -->
+            <button class="next-btn" onclick="showNextQuiz()">下一题</button>
         </div>
     </div>
 </div>
@@ -51,38 +59,95 @@
 <script>
     let currentAnswer = "";
     let answered = false;
+    let prefetchedData = null; // 存储预取的题目数据
+    let isPrefetching = false; // 防止重复请求
 
-    // 页面加载后立即获取数据
-    window.onload = async () => {
+    // 核心函数：从 API 获取题目
+    async function fetchQuizData() {
         try {
             const response = await fetch('/api/generate');
-            const data = await response.json();
-            
-            // 填充数据
-            document.getElementById('song-title').innerText = `歌曲：${data.song_name}`;
-            document.getElementById('quiz-content').innerText = data.quiz_content;
-            currentAnswer = data.answer;
-
-            const optionsGroup = document.getElementById('options-group');
-            Object.entries(data.options).forEach(([key, value]) => {
-                const btn = document.createElement('button');
-                btn.className = 'option-btn';
-                btn.innerHTML = `<strong>${key}.</strong> ${value}`;
-                btn.onclick = () => checkAnswer(key, btn, data.explanation);
-                optionsGroup.appendChild(btn);
-            });
-
-            // 切换显示状态
-            document.getElementById('loader').style.display = 'none';
-            document.getElementById('quiz-container').style.display = 'block';
+            if (!response.ok) throw new Error("网络错误");
+            return await response.json();
         } catch (error) {
-            document.getElementById('loader').innerHTML = "<p>加载失败，请检查 API 配置或网络。</p>";
+            console.error("获取题目失败:", error);
+            return null;
         }
-    };
+    }
+
+    // 将数据渲染到页面上
+    function renderQuiz(data) {
+        if (!data) {
+            document.getElementById('loader').innerHTML = "<p>加载失败，请刷新重试。</p>";
+            return;
+        }
+
+        // 1. 重置状态
+        answered = false;
+        currentAnswer = data.answer;
+        document.getElementById('result-box').style.display = 'none';
+        const optionsGroup = document.getElementById('options-group');
+        optionsGroup.innerHTML = ''; // 清空旧选项
+
+        // 2. 填充新内容
+        document.getElementById('song-title').innerText = `歌曲：${data.song_name}`;
+        document.getElementById('quiz-content').innerText = data.quiz_content;
+
+        Object.entries(data.options).forEach(([key, value]) => {
+            const btn = document.createElement('button');
+            btn.className = 'option-btn';
+            btn.innerHTML = `<strong>${key}.</strong> ${value}`;
+            btn.onclick = () => checkAnswer(key, btn, data.explanation);
+            optionsGroup.appendChild(btn);
+        });
+
+        // 3. 显示 UI
+        document.getElementById('loader').style.display = 'none';
+        document.getElementById('quiz-container').style.display = 'block';
+
+        // 4. 重点：渲染当前题目后，立即预取下一道题
+        prefetchNext();
+    }
+
+    // 后台预取下一题
+    async function prefetchNext() {
+        if (isPrefetching) return;
+        isPrefetching = true;
+        prefetchedData = await fetchQuizData();
+        isPrefetching = false;
+        console.log("下一题已在后台就绪");
+    }
+
+    // 用户点击“下一题”
+    async function showNextQuiz() {
+        // 如果预取的题目还没回来，显示加载状态
+        if (!prefetchedData) {
+            document.getElementById('quiz-container').style.display = 'none';
+            document.getElementById('loader').style.display = 'block';
+            document.getElementById('loader-text').innerText = "正在拼命加载下一题...";
+            
+            // 轮询等待预取完成
+            const checkInterval = setInterval(() => {
+                if (prefetchedData) {
+                    clearInterval(checkInterval);
+                    renderQuiz(prefetchedData);
+                    prefetchedData = null; // 用完清空
+                }
+            }, 100);
+        } else {
+            // 如果已经预取好了，直接秒开
+            const data = prefetchedData;
+            prefetchedData = null; // 用完清空
+            renderQuiz(data);
+        }
+    }
 
     function checkAnswer(choice, btn, explanation) {
         if (answered) return;
         answered = true;
+
+        // 禁用所有选项按钮
+        const buttons = document.querySelectorAll('.option-btn');
+        buttons.forEach(b => b.disabled = true);
 
         const resultBox = document.getElementById('result-box');
         const status = document.getElementById('result-status');
@@ -101,6 +166,12 @@
         resultBox.style.display = 'block';
         resultBox.style.background = (choice === currentAnswer) ? '#f0fff4' : '#fff5f5';
     }
+
+    // 初始加载第一题
+    window.onload = async () => {
+        const firstQuiz = await fetchQuizData();
+        renderQuiz(firstQuiz);
+    };
 </script>
 
 </body>
