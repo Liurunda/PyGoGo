@@ -30,12 +30,6 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-type Song struct {
-	Name   string   `json:"name"`
-	Singer string   `json:"singer"`
-	Lyric  []string `json:"lyric"`
-}
-
 func handler(w http.ResponseWriter, r *http.Request) {
 	tmpl, err := template.ParseFiles("templates/index.html")
 	if err != nil {
@@ -109,7 +103,7 @@ func lyricsHandler(w http.ResponseWriter, r *http.Request) {
 func apiHandler(w http.ResponseWriter, r *http.Request) {
 	// 1. 读取本地 JSON
 	file, _ := os.ReadFile("Dataset/lyrics1.json")
-	var songs []Song
+	var songs []SongInfo
 	json.Unmarshal(file, &songs)
 
 	// 2. 随机选歌

@@ -127,27 +127,3 @@ func GenerateStructuredQuiz(songInfo SongInfo) (*QuizData, error) {
 
 	return &quizData, nil
 }
-
-func main() {
-	// 模拟一条数据
-	exampleSong := SongInfo{
-		Name:   "少年与梦",
-		Singer: "郑冰冰",
-		Lyric: []string{
-			"有一天我从座位的窗口望下去",
-			"看见一群入职的新同学",
-			"他们的笑脸天真又充满期许",
-			"一瞬间想起了那时候的自己",
-		},
-	}
-
-	quiz, err := GenerateStructuredQuiz(exampleSong)
-	if err != nil {
-		fmt.Printf("生成失败: %v\n", err)
-		return
-	}
-
-	// 打印结果
-	output, _ := json.MarshalIndent(quiz, "", "    ")
-	fmt.Println(string(output))
-}
