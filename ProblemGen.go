@@ -36,9 +36,10 @@ type GeminiResponse struct {
 	} `json:"candidates"`
 }
 
-const (
-	API_KEY = "AIzaSyAohMf4KqK0InO3HFbO1c1NcDPQT5ugsBU"
-	// 注意：建议检查模型名称，目前常用的是 gemini-1.5-flash
+import "os"
+
+var (
+	API_KEY = os.Getenv("GEMINI_API_KEY")
 	API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=" + API_KEY
 )
 
