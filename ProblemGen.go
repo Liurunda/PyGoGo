@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"os"
 	"net/http"
 	"strings"
 )
@@ -36,7 +37,6 @@ type GeminiResponse struct {
 	} `json:"candidates"`
 }
 
-import "os"
 
 var (
 	API_KEY = os.Getenv("GEMINI_API_KEY")

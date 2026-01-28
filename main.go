@@ -10,22 +10,22 @@ package main
 // 模板渲染：使用HTML模板 (index.html) 渲染页面，显示当前时间、用户代码和反馈。
 // 错误处理：处理模板解析、执行错误和数据库连接问题，返回相应的HTTP错误。
 // 程序还包含一个注释的Nginx配置示例，用于反向代理到Go服务器，以支持生产环境部署。
-// 
+//
 // 整体上，这是一个用于代码调试和反馈的Web应用。
-
 
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"html/template"
 	"io"
+	"math/rand"
 	"net/http"
+	"os"
 	"os/exec"
 	"time"
-	"encoding/json"
-	"os"
-	"math/rand"
+
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
@@ -33,7 +33,9 @@ import (
 func handler(w http.ResponseWriter, r *http.Request) {
 	tmpl, err := template.ParseFiles("templates/index.html")
 	if err != nil {
+
 		http.Error(w, "Template Parsing Error", http.StatusInternalServerError)
+		return
 	}
 
 	r.ParseForm()
@@ -112,7 +114,11 @@ func apiHandler(w http.ResponseWriter, r *http.Request) {
 
 	// 3. 请求 Gemini
 	quiz, err := GenerateStructuredQuiz(selectedSong)
+
 	if err != nil {
+		// Print error message to server console for debugging
+		fmt.Println("Error generating quiz:", err)
+		// Return HTTP 500 error to client
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -127,9 +133,9 @@ func main() {
 	// 为根路径"/"注册handler处理器函数
 	http.HandleFunc("/", handler)
 	// 为"/lyrics/"路径注册lyricsHandler处理器函数
-	http.HandleFunc("/lyrics/", lyricsHandler);
+	http.HandleFunc("/lyrics/", lyricsHandler)
 	// 为"/api/generate"路径注册apiHandler处理器函数
-	http.HandleFunc("/api/generate",apiHandler);
+	http.HandleFunc("/api/generate", apiHandler)
 	// 打印服务器启动信息，提示用户访问地址
 	fmt.Println("Server is running on http://localhost:8080")
 	// 启动HTTP服务器，监听本地8080端口
@@ -172,4 +178,3 @@ server {
     # error_log /var/log/nginx/your_go_app.error.log;
 }
 */
-		
