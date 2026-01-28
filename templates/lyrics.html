@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>歌词填空挑战</title>
+    <style>
+        :root { --primary: #2c3e50; --accent: #e74c3c; }
+        body { font-family: 'PingFang SC', sans-serif; background: #f4f7f6; display: flex; justify-content: center; padding: 40px; }
+        .card { background: white; width: 100%; max-width: 600px; padding: 30px; border-radius: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
+        
+        /* 加载动画 */
+        #loader { text-align: center; padding: 50px 0; }
+        .spinner { width: 40px; height: 40px; border: 4px solid #f3f3f3; border-top: 4px solid var(--accent); border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 15px; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        /* 内容样式 */
+        #quiz-container { display: none; }
+        .quiz-text { font-size: 1.2rem; line-height: 1.8; background: #fff9f9; padding: 20px; border-left: 5px solid var(--accent); margin-bottom: 25px; white-space: pre-wrap; }
+        .option-btn { display: block; width: 100%; padding: 12px 20px; margin: 10px 0; border: 2px solid #eee; border-radius: 8px; background: white; text-align: left; cursor: pointer; transition: 0.2s; font-size: 1rem; }
+        .option-btn:hover { border-color: var(--accent); background: #fff5f5; }
+        .option-btn.correct { background: #d4edda; border-color: #28a745; color: #155724; }
+        .option-btn.wrong { background: #f8d7da; border-color: #dc3545; color: #721c24; }
+
+        #result-box { margin-top: 20px; padding: 20px; border-radius: 8px; display: none; }
+        .explanation { color: #666; font-size: 0.95rem; margin-top: 10px; border-top: 1px solid #eee; padding-top: 10px; }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <!-- 加载状态 -->
+    <div id="loader">
+        <div class="spinner"></div>
+        <p>题目生成中，请稍候...</p>
+    </div>
+
+    <!-- 题目内容 -->
+    <div id="quiz-container">
+        <h2 id="song-title" style="color: var(--primary); margin-top: 0;"></h2>
+        <div class="quiz-text" id="quiz-content"></div>
+        <div id="options-group"></div>
+
+        <div id="result-box">
+            <h3 id="result-status"></h3>
+            <div class="explanation" id="explanation"></div>
+            <button onclick="location.reload()" style="margin-top: 15px; cursor: pointer;">下一题</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    let currentAnswer = "";
+    let answered = false;
+
+    // 页面加载后立即获取数据
+    window.onload = async () => {
+        try {
+            const response = await fetch('/api/generate');
+            const data = await response.json();
+            
+            // 填充数据
+            document.getElementById('song-title').innerText = `歌曲：${data.song_name}`;
+            document.getElementById('quiz-content').innerText = data.quiz_content;
+            currentAnswer = data.answer;
+
+            const optionsGroup = document.getElementById('options-group');
+            Object.entries(data.options).forEach(([key, value]) => {
+                const btn = document.createElement('button');
+                btn.className = 'option-btn';
+                btn.innerHTML = `<strong>${key}.</strong> ${value}`;
+                btn.onclick = () => checkAnswer(key, btn, data.explanation);
+                optionsGroup.appendChild(btn);
+            });
+
+            // 切换显示状态
+            document.getElementById('loader').style.display = 'none';
+            document.getElementById('quiz-container').style.display = 'block';
+        } catch (error) {
+            document.getElementById('loader').innerHTML = "<p>加载失败，请检查 API 配置或网络。</p>";
+        }
+    };
+
+    function checkAnswer(choice, btn, explanation) {
+        if (answered) return;
+        answered = true;
+
+        const resultBox = document.getElementById('result-box');
+        const status = document.getElementById('result-status');
+        
+        if (choice === currentAnswer) {
+            btn.classList.add('correct');
+            status.innerText = "✅ 回答正确！";
+            status.style.color = "#28a745";
+        } else {
+            btn.classList.add('wrong');
+            status.innerText = `❌ 回答错误，正确答案是 ${currentAnswer}`;
+            status.style.color = "#dc3545";
+        }
+
+        document.getElementById('explanation').innerText = "解析：" + explanation;
+        resultBox.style.display = 'block';
+        resultBox.style.background = (choice === currentAnswer) ? '#f0fff4' : '#fff5f5';
+    }
+</script>
+
+</body>
+</html>
