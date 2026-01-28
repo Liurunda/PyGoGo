@@ -97,12 +97,42 @@ func lyricsHandler(w http.ResponseWriter, r *http.Request) {
 	tmpl := template.Must(template.ParseFiles("templates/lyrics.html"))
 	tmpl.Execute(w, nil)
 }
+
+func apiHandler(w http.ResponseWriter, r *http.Request) {
+	// 1. 读取本地 JSON
+	file, _ := os.ReadFile("Dataset/lyrics1.json")
+	var songs []Song
+	json.Unmarshal(file, &songs)
+
+	// 2. 随机选歌
+	rand.Seed(time.Now().UnixNano())
+	selectedSong := songs[rand.Intn(len(songs))]
+
+	// 3. 请求 Gemini
+	quiz, err := GenerateStructuredQuiz(selectedSong)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// 4. 返回结果
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(quiz)
+}
+
+// main函数是程序的入口点
 func main() {
+	// 为根路径"/"注册handler处理器函数
 	http.HandleFunc("/", handler)
+	// 为"/lyrics/"路径注册lyricsHandler处理器函数
 	http.HandleFunc("/lyrics/", lyricsHandler);
+	// 为"/api/generate"路径注册apiHandler处理器函数
 	http.HandleFunc("/api/generate",apiHandler);
+	// 打印服务器启动信息，提示用户访问地址
 	fmt.Println("Server is running on http://localhost:8080")
+	// 启动HTTP服务器，监听本地8080端口
 	err := http.ListenAndServe("127.0.0.1:8080", nil)
+	// 如果服务器启动出错，打印错误信息
 	if err != nil {
 		fmt.Println("Error starting server:", err)
 	}
