@@ -23,10 +23,18 @@ import (
 	"net/http"
 	"os/exec"
 	"time"
-
+	"encoding/json"
+	"os"
+	"math/rand"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
+
+type Song struct {
+	Name   string   `json:"name"`
+	Singer string   `json:"singer"`
+	Lyric  []string `json:"lyric"`
+}
 
 func handler(w http.ResponseWriter, r *http.Request) {
 	tmpl, err := template.ParseFiles("templates/index.html")
