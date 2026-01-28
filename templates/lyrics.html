@@ -59,25 +59,68 @@
 <script>
     let currentAnswer = "";
     let answered = false;
-    let prefetchedData = null; // 存储预取的题目数据
-    let isPrefetching = false; // 防止重复请求
+    let prefetchedData = null; 
+    let isPrefetching = false; 
 
-    // 核心函数：从 API 获取题目
-    async function fetchQuizData() {
-        try {
-            const response = await fetch('/api/generate');
-            if (!response.ok) throw new Error("网络错误");
-            return await response.json();
-        } catch (error) {
-            console.error("获取题目失败:", error);
-            return null;
+    // 辅助函数：等待一段时间
+    const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+    /**
+     * 核心函数：从 API 获取题目（带重试逻辑）
+     * @param {number} maxRetries 最大重试次数
+     */
+    async function fetchQuizData(maxRetries = 3) {
+        const loaderText = document.getElementById('loader-text');
+        
+        for (let i = 0; i <= maxRetries; i++) {
+            try {
+                const response = await fetch('/api/generate');
+                
+                // 如果成功，直接返回数据
+                if (response.ok) {
+                    return await response.json();
+                }
+
+                // 如果是服务器过载 (503) 或请求过多 (429)
+                if (response.status === 503 || response.status === 429) {
+                    if (i < maxRetries) {
+                        const waitTime = (i + 1) * 2000; // 递增等待时间：2s, 4s, 6s
+                        if (loaderText) loaderText.innerText = `服务器太忙了，正在进行第 ${i + 1} 次重试...`;
+                        await sleep(waitTime);
+                        continue; // 继续下一次循环重试
+                    }
+                }
+                
+                throw new Error(`请求失败 (状态码: ${response.status})`);
+
+            } catch (error) {
+                console.error(`第 ${i} 次尝试失败:`, error);
+                
+                // 最后一次尝试也失败了
+                if (i === maxRetries) {
+                    return null;
+                }
+                
+                // 网络断开等异常情况，等待后重试
+                const waitTime = (i + 1) * 2000;
+                if (loaderText) loaderText.innerText = `网络连接不稳定，${waitTime/1000}秒后重试...`;
+                await sleep(waitTime);
+            }
         }
+        return null;
     }
 
     // 将数据渲染到页面上
     function renderQuiz(data) {
+        const loader = document.getElementById('loader');
+        const container = document.getElementById('quiz-container');
+
         if (!data) {
-            document.getElementById('loader').innerHTML = "<p>加载失败，请刷新重试。</p>";
+            // 如果最终还是失败，显示手动重试按钮
+            loader.innerHTML = `
+                <p style="color: #e74c3c;">⚠️ 暂时无法获取题目，请检查网络或稍后再试。</p>
+                <button class="next-btn" onclick="location.reload()">手动刷新页面</button>
+            `;
             return;
         }
 
@@ -86,7 +129,7 @@
         currentAnswer = data.answer;
         document.getElementById('result-box').style.display = 'none';
         const optionsGroup = document.getElementById('options-group');
-        optionsGroup.innerHTML = ''; // 清空旧选项
+        optionsGroup.innerHTML = ''; 
 
         // 2. 填充新内容
         document.getElementById('song-title').innerText = `歌曲：${data.song_name}`;
@@ -101,10 +144,10 @@
         });
 
         // 3. 显示 UI
-        document.getElementById('loader').style.display = 'none';
-        document.getElementById('quiz-container').style.display = 'block';
+        loader.style.display = 'none';
+        container.style.display = 'block';
 
-        // 4. 重点：渲染当前题目后，立即预取下一道题
+        // 4. 后台预取下一题
         prefetchNext();
     }
 
@@ -112,31 +155,32 @@
     async function prefetchNext() {
         if (isPrefetching) return;
         isPrefetching = true;
-        prefetchedData = await fetchQuizData();
+        // 预取时也使用带重试的函数
+        prefetchedData = await fetchQuizData(2); 
         isPrefetching = false;
-        console.log("下一题已在后台就绪");
     }
 
     // 用户点击“下一题”
     async function showNextQuiz() {
-        // 如果预取的题目还没回来，显示加载状态
+        const loader = document.getElementById('loader');
+        const loaderText = document.getElementById('loader-text');
+        const container = document.getElementById('quiz-container');
+
         if (!prefetchedData) {
-            document.getElementById('quiz-container').style.display = 'none';
-            document.getElementById('loader').style.display = 'block';
-            document.getElementById('loader-text').innerText = "正在拼命加载下一题...";
+            container.style.display = 'none';
+            loader.style.display = 'block';
+            loaderText.innerText = "正在拼命加载下一题...";
             
-            // 轮询等待预取完成
-            const checkInterval = setInterval(() => {
-                if (prefetchedData) {
-                    clearInterval(checkInterval);
-                    renderQuiz(prefetchedData);
-                    prefetchedData = null; // 用完清空
-                }
-            }, 100);
+            // 如果当前没有预取成功的数据，重新发起一次获取请求
+            const data = await fetchQuizData(3);
+            if (data) {
+                renderQuiz(data);
+            } else {
+                renderQuiz(null); // 处理彻底失败的情况
+            }
         } else {
-            // 如果已经预取好了，直接秒开
             const data = prefetchedData;
-            prefetchedData = null; // 用完清空
+            prefetchedData = null; 
             renderQuiz(data);
         }
     }
@@ -145,7 +189,6 @@
         if (answered) return;
         answered = true;
 
-        // 禁用所有选项按钮
         const buttons = document.querySelectorAll('.option-btn');
         buttons.forEach(b => b.disabled = true);
 
@@ -167,9 +210,8 @@
         resultBox.style.background = (choice === currentAnswer) ? '#f0fff4' : '#fff5f5';
     }
 
-    // 初始加载第一题
     window.onload = async () => {
-        const firstQuiz = await fetchQuizData();
+        const firstQuiz = await fetchQuizData(3);
         renderQuiz(firstQuiz);
     };
 </script>
