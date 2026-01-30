@@ -8,6 +8,15 @@
         body { font-family: 'PingFang SC', sans-serif; background: #f4f7f6; display: flex; justify-content: center; padding: 40px; }
         .card { background: white; width: 100%; max-width: 600px; padding: 30px; border-radius: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
         
+        /* 新增：错误时的摇晃动画 */
+        @keyframes shake {
+            0% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            50% { transform: translateX(5px); }
+            75% { transform: translateX(-5px); }
+            100% { transform: translateX(0); }
+        }
+
         /* 加载动画 */
         #loader { text-align: center; padding: 50px 0; }
         .spinner { width: 40px; height: 40px; border: 4px solid #f3f3f3; border-top: 4px solid var(--accent); border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 15px; }
@@ -19,9 +28,17 @@
         .option-btn { display: block; width: 100%; padding: 12px 20px; margin: 10px 0; border: 2px solid #eee; border-radius: 8px; background: white; text-align: left; cursor: pointer; transition: 0.2s; font-size: 1rem; }
         .option-btn:hover:not(:disabled) { border-color: var(--accent); background: #fff5f5; }
         .option-btn.correct { background: #d4edda !important; border-color: #28a745 !important; color: #155724; }
-        .option-btn.wrong { background: #f8d7da !important; border-color: #dc3545 !important; color: #721c24; }
+        /* .option-btn.wrong { background: #f8d7da !important; border-color: #dc3545 !important; color: #721c24; } */
         .option-btn:disabled { cursor: default; }
-
+        /* 修改：错误选项的样式变得更柔和，并带有删除线 */
+        .option-btn.wrong { 
+            background: #f1f2f6 !important; /* 变成灰色而不是鲜红 */
+            border-color: #ced4da !important; 
+            color: #adb5bd; /* 文字变淡 */
+            text-decoration: line-through; /*以此表示排除 */
+            cursor: not-allowed;
+            animation: shake 0.4s ease-in-out; /* 触发摇晃 */
+        }
         #result-box { margin-top: 20px; padding: 20px; border-radius: 8px; display: none; }
         .explanation { color: #666; font-size: 0.95rem; margin-top: 10px; border-top: 1px solid #eee; padding-top: 10px; }
         
@@ -185,29 +202,73 @@
         }
     }
 
-    function checkAnswer(choice, btn, explanation) {
-        if (answered) return;
-        answered = true;
+    let wrongAttempts = 0; 
 
-        const buttons = document.querySelectorAll('.option-btn');
-        buttons.forEach(b => b.disabled = true);
+    function checkAnswer(choice, btn, explanation) {
+        // 如果已经答对并锁定了，就不能再点了
+        if (answered) return;
 
         const resultBox = document.getElementById('result-box');
         const status = document.getElementById('result-status');
-        
-        if (choice === currentAnswer) {
-            btn.classList.add('correct');
-            status.innerText = "✅ 回答正确！";
-            status.style.color = "#28a745";
-        } else {
-            btn.classList.add('wrong');
-            status.innerText = `❌ 回答错误，正确答案是 ${currentAnswer}`;
-            status.style.color = "#dc3545";
-        }
+        const explanationDiv = document.getElementById('explanation');
 
-        document.getElementById('explanation').innerText = "解析：" + explanation;
-        resultBox.style.display = 'block';
-        resultBox.style.background = (choice === currentAnswer) ? '#f0fff4' : '#fff5f5';
+        if (choice === currentAnswer) {
+            // --- 答对了 ---
+            answered = true; // 锁定状态
+            btn.classList.add('correct');
+            
+            // 锁定所有其他按钮
+            const buttons = document.querySelectorAll('.option-btn');
+            buttons.forEach(b => b.disabled = true);
+
+            // 根据尝试次数给予不同的鼓励文案
+            if (wrongAttempts === 0) {
+                status.innerText = "🎉 太棒了！一击即中！";
+                status.style.color = "#28a745";
+            } else {
+                status.innerText = "✅ 答对啦！";
+                status.style.color = "#28a745";
+            }
+
+            // 显示解析区域
+            explanationDiv.innerText = "解析：" + explanation;
+            explanationDiv.style.display = "block"; // 确保解析可见
+            resultBox.style.display = 'block';
+            resultBox.style.background = '#f0fff4';
+            
+            // 重置错误计数以便下一题使用
+            wrongAttempts = 0; 
+
+        } else {
+            // --- 答错了 ---
+            wrongAttempts++;
+            
+            // 1. 视觉反馈：变灰、摇晃
+            btn.classList.add('wrong');
+            
+            // 2. 逻辑反馈：只禁用这一个按钮，让用户继续选
+            btn.disabled = true;
+
+            // 3. 柔和的提示文案
+            status.innerText = getRandomEncouragement(); 
+            status.style.color = "#888"; // 使用中性颜色，不要用警告红
+            
+            // 4. 暂时不显示解析，只显示提示框
+            explanationDiv.style.display = "none"; // 隐藏解析，避免剧透
+            resultBox.style.display = 'block';
+            resultBox.style.background = '#fff'; // 保持白色或很淡的灰色
+        }
+    }
+
+    // 辅助函数：随机鼓励文案
+    function getRandomEncouragement() {
+        const messages = [
+            "🤔 好像不太对，换一个试试？",
+            "👻 这是一个干扰项，再选选看！",
+            "💪 别气馁，答案就在剩下的选项里！",
+            "🙊 差点就对了，排除一个错误答案。"
+        ];
+        return messages[Math.floor(Math.random() * messages.length)];
     }
 
     window.onload = async () => {
