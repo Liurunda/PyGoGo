@@ -47,9 +47,71 @@
             border: none; border-radius: 5px; cursor: pointer; font-size: 1rem;
         }
         .next-btn:hover { opacity: 0.9; }
+            
+            /* 遮罩层 */
+    .modal-overlay {
+        position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+        background: rgba(0, 0, 0, 0.6); z-index: 1000;
+        display: flex; justify-content: center; align-items: center;
+        backdrop-filter: blur(5px); /* 背景模糊效果 */
+    }
+
+    /* 弹窗内容 */
+    .modal-content {
+        background: white; padding: 30px; border-radius: 20px;
+        width: 85%; max-width: 400px; text-align: center;
+        box-shadow: 0 20px 50px rgba(0,0,0,0.2);
+        animation: popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+
+    @keyframes popIn {
+        from { opacity: 0; transform: scale(0.8); }
+        to { opacity: 1; transform: scale(1); }
+    }
+
+    .tutorial-steps { text-align: left; padding-left: 20px; margin: 20px 0; color: #555; }
+    .tutorial-steps li { margin-bottom: 10px; line-height: 1.6; }
+
+    .start-btn {
+        background: var(--accent); color: white; border: none;
+        padding: 12px 30px; border-radius: 25px; font-size: 1.1rem;
+        cursor: pointer; transition: transform 0.2s;
+        box-shadow: 0 5px 15px rgba(231, 76, 60, 0.4);
+    }
+    .start-btn:hover { transform: scale(1.05); }
+
+    /* 右下角帮助小图标 */
+    .help-icon {
+        position: fixed; bottom: 20px; right: 20px;
+        width: 40px; height: 40px; background: white;
+        border-radius: 50%; box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        display: flex; justify-content: center; align-items: center;
+        font-weight: bold; color: var(--primary); cursor: pointer;
+        z-index: 900; transition: 0.3s;
+    }
+    .help-icon:hover { transform: translateY(-3px); }
+
+        
     </style>
 </head>
 <body>
+
+<!-- 新手引导弹窗 -->
+<div id="tutorial-modal" class="modal-overlay" style="display: none;">
+    <div class="modal-content">
+        <h3>🎵 欢迎来到歌词挑战！</h3>
+        <ul class="tutorial-steps">
+            <li>👀 <strong>看歌词：</strong> 阅读屏幕上显示的歌词片段。</li>
+            <li>🧠 <strong>猜空缺：</strong> 猜猜划线部分 <u>_____</u> 是什么词。</li>
+            <li>point_up_2: <strong>做选择：</strong> 点击下方选项。选错了也没关系，可以排除错误选项重试！</li>
+        </ul>
+        <button class="start-btn" onclick="closeTutorial()">开始挑战 🚀</button>
+    </div>
+</div>
+
+<!-- 页面角落加一个帮助按钮，随时可以再次查看 -->
+<div class="help-icon" onclick="openTutorial()">?</div>
+
 
 <div class="card">
     <!-- 加载状态 -->
@@ -271,7 +333,25 @@
         return messages[Math.floor(Math.random() * messages.length)];
     }
 
+    function checkTutorial() {
+    const hasSeen = localStorage.getItem('lyric_quiz_tutorial_seen');
+    if (!hasSeen) {
+        document.getElementById('tutorial-modal').style.display = 'flex';
+    }
+}
+
+    function closeTutorial() {
+        document.getElementById('tutorial-modal').style.display = 'none';
+        localStorage.setItem('lyric_quiz_tutorial_seen', 'true'); // 标记已读
+    }
+
+    function openTutorial() {
+        document.getElementById('tutorial-modal').style.display = 'flex';
+    }
+
+    // 在 window.onload 中调用
     window.onload = async () => {
+        checkTutorial(); // 先检查引导
         const firstQuiz = await fetchQuizData(3);
         renderQuiz(firstQuiz);
     };
