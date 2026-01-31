@@ -91,7 +91,59 @@
     }
     .help-icon:hover { transform: translateY(-3px); }
 
-        
+    /* 例题卡片容器 */
+    .demo-card {
+        background: #f8f9fa;
+        border: 2px dashed #e9ecef; /* 虚线边框表示这是“演习” */
+        padding: 15px;
+        border-radius: 10px;
+        margin-bottom: 20px;
+        text-align: left;
+    }
+
+    .demo-song {
+        font-size: 0.85rem; color: var(--accent); margin: 0 0 5px 0; font-weight: bold;
+    }
+
+    .demo-text {
+        font-size: 1rem; margin-bottom: 15px; color: #333;
+    }
+
+    /* 强调填空处 */
+    .demo-blank {
+        border-bottom: 2px solid var(--accent);
+        color: transparent;
+        display: inline-block;
+        width: 40px;
+    }
+
+    /* 迷你选项按钮 */
+    .demo-btn {
+        display: block; width: 100%; padding: 8px 15px; margin: 5px 0;
+        border: 1px solid #ddd; border-radius: 6px; background: white;
+        cursor: pointer; text-align: left; transition: 0.2s;
+        font-size: 0.9rem;
+    }
+    .demo-btn:hover { background: #fff5f5; border-color: var(--accent); }
+
+    /* 例题反馈样式 */
+    .demo-btn.correct { background: #d4edda; border-color: #28a745; color: #155724; }
+    .demo-btn.wrong { background: #f1f2f6; border-color: #ced4da; color: #adb5bd; text-decoration: line-through; }
+
+    /* 开始按钮稍微改一下，一开始可以稍微变灰，引导用户先做题 */
+    .start-btn {
+        /* 之前的样式保持不变... */
+        transition: all 0.3s;
+    }
+    .start-btn.highlight {
+        animation: bounce 0.5s;
+        background: #27ae60; /* 答对后变绿，吸引点击 */
+    }
+    @keyframes bounce {
+        0%, 100% { transform: scale(1); }
+        50% { transform: scale(1.1); }
+    }
+
     </style>
 </head>
 <body>
@@ -101,13 +153,39 @@
     <div class="modal-content">
         <h3>🎵 欢迎来到歌词挑战！</h3>
         <ul class="tutorial-steps">
-            <li>👀 <strong>看歌词：</strong> 阅读屏幕上显示的歌词片段。</li>
-            <li>🧠 <strong>猜空缺：</strong> 猜猜划线部分 <u>_____</u> 是什么词。</li>
-            <li>point_up_2: <strong>做选择：</strong> 点击下方选项。选错了也没关系，可以排除错误选项重试！</li>
+            <li> <strong>看歌词：</strong> 阅读屏幕上显示的歌词片段。</li>
+            <li> <strong>猜空缺：</strong> 猜猜划线部分 <u>_____</u> 是什么词。</li>
+            <li> <strong>做选择：</strong> 点击下方选项。选错了也没关系，可以排除错误选项重试！</li>
         </ul>
-        <button class="start-btn" onclick="closeTutorial()">开始挑战 🚀</button>
+        <p style="color: #666; margin-bottom: 15px;">试试做一道题来熟悉规则吧：</p>
+        
+        <!-- 迷你例题区域 -->
+        <div class="demo-card">
+            <p class="demo-song">🎵 歌曲：《两只老虎》</p>
+            <div class="demo-text">
+                两只老虎 两只老虎<br>
+                <span class="demo-blank">____</span>。<br>
+                 
+                一只没有眼睛，一只没有尾巴。<br>
+                真奇怪, 真奇怪<br>
+            </div>
+            
+            <div class="demo-options">
+                <!-- 故意设置一个错误的，一个正确的 -->
+                <button class="demo-btn" onclick="checkDemo(this, false)">A. 把门开, 把门开。</button>
+                <button class="demo-btn" onclick="checkDemo(this, true)">B. 跑得快, 跑得快。</button>
+            </div>
+            
+            <!-- 反馈文案 -->
+            <div id="demo-feedback" style="display:none; margin-top:10px; font-size: 0.9rem;"></div>
+        </div>
+
+        <button id="start-game-btn" class="start-btn" onclick="closeTutorial()">
+            开始正式挑战 🚀
+        </button>
     </div>
 </div>
+
 
 <!-- 页面角落加一个帮助按钮，随时可以再次查看 -->
 <div class="help-icon" onclick="openTutorial()">?</div>
@@ -334,11 +412,44 @@
     }
 
     function checkTutorial() {
-    const hasSeen = localStorage.getItem('lyric_quiz_tutorial_seen');
-    if (!hasSeen) {
-        document.getElementById('tutorial-modal').style.display = 'flex';
+        const hasSeen = localStorage.getItem('lyric_quiz_tutorial_seen');
+        if (!hasSeen) {
+            document.getElementById('tutorial-modal').style.display = 'flex';
+        }
+    }   
+    // 处理例题点击
+    function checkDemo(btn, isCorrect) {
+        const feedback = document.getElementById('demo-feedback');
+        const startBtn = document.getElementById('start-game-btn');
+        
+        // 每次点击先重置一下兄弟按钮的状态（可选，或者允许保留错误状态）
+        // 这里我们简单处理：点击后锁定当前按钮
+        
+        if (isCorrect) {
+            // --- 演示正确的情况 ---
+            btn.classList.add('correct');
+            btn.innerHTML = "✅ B. 跑得快, 跑得快 (答对啦！)";
+            
+            feedback.style.display = 'block';
+            feedback.innerHTML = "🎉 <span style='color:#28a745'>太棒了！你已经掌握了规则！</span>";
+            
+            // 高亮“开始游戏”按钮，引导下一步
+            startBtn.innerText = "准备好了！开始挑战 🚀";
+            startBtn.classList.add('highlight');
+            
+            // 锁定所有demo按钮
+            document.querySelectorAll('.demo-btn').forEach(b => b.disabled = true);
+            
+        } else {
+            // --- 演示错误的情况 ---
+            btn.classList.add('wrong');
+            btn.disabled = true; // 演示“排除法”
+            
+            feedback.style.display = 'block';
+            feedback.innerHTML = "🤔 <span style='color:#666'>不对哦，这就是<b>排除法</b>！试试另一个？</span>";
+        }
     }
-}
+
 
     function closeTutorial() {
         document.getElementById('tutorial-modal').style.display = 'none';
